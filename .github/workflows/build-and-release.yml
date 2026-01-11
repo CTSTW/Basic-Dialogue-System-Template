@@ -1,0 +1,154 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # 当推送v开头的标签时触发
+  workflow_dispatch:  # 允许手动触发
+    inputs:
+      version:
+        description: '版本号 (例如: 2026.1.11)'
+        required: true
+        default: ''
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+    
+    - name: Get current date
+      id: date
+      run: echo "date=$(Get-Date -Format 'yyyy.M.d')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+    
+    - name: Get current timestamp
+      id: timestamp
+      run: echo "timestamp=$(Get-Date -Format 'yyyy.M.d-HHmm')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+    
+    - name: Set version
+      id: version
+      run: |
+        if ("${{ github.event.inputs.version }}" -ne "") {
+          $version = "${{ github.event.inputs.version }}"
+        } elseif ("${{ github.ref_type }}" -eq "tag") {
+          $version = "${{ github.ref_name }}".Replace('v', '')
+        } else {
+          $version = "${{ steps.date.outputs.date }}"
+        }
+        echo "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+    
+    - name: Setup CMake
+      uses: jwlawson/actions-setup-cmake@v1
+      with:
+        cmake-version: '3.27'
+    
+    - name: Setup MSVC
+      uses: ilammy/msvc-dev-cmd@v1
+    
+    - name: Create build directory
+      run: |
+        mkdir build
+        cd build
+    
+    - name: Configure CMake
+      run: cmake ..
+      working-directory: ./build
+    
+    - name: Build all targets
+      run: cmake --build . --config Release
+      working-directory: ./build
+    
+    - name: Create output directory
+      run: |
+        mkdir -p release/bin
+        mkdir -p release/lib
+    
+    - name: Collect executable files
+      run: |
+        # 复制根目录的cpp编译的可执行文件
+        Copy-Item .\build\Release\*.exe .\release\bin\ -ErrorAction SilentlyContinue
+        
+        # 复制VisualNovelDemo的可执行文件
+        if (Test-Path ".\build\VisualNovelDemo\Release\VisualNovelDemo.exe") {
+          Copy-Item ".\build\VisualNovelDemo\Release\VisualNovelDemo.exe" ".\release\bin\"
+        }
+        
+        # 复制其他可能的可执行文件
+        Get-ChildItem -Recurse -Filter *.exe | Where-Object { $_.DirectoryName -like "*Release*" } | ForEach-Object {
+          $dest = Join-Path ".\release\bin\" $_.Name
+          Copy-Item $_.FullName $dest
+        }
+        
+        # 复制DLL文件
+        Copy-Item .\build\Release\*.dll .\release\bin\ -ErrorAction SilentlyContinue
+        
+        # 列出所有文件
+        Write-Output "=== 编译的文件列表 ==="
+        Get-ChildItem -Recurse ".\release\bin\" -File | ForEach-Object {
+          Write-Output "$($_.Name) - $($_.Length / 1KB) KB"
+        }
+    
+    - name: Create README for release
+      run: |
+        $readmeContent = @"
+# 编译发布版本
+
+## 版本信息
+- **版本号**: ${{ steps.version.outputs.version }}
+- **编译时间**: $(Get-Date -Format 'yyyy年M月d日 HH:mm:ss')
+- **Git提交**: ${{ github.sha }}
+- **分支/标签**: ${{ github.ref }}
+
+## 包含的可执行文件
+
+$((Get-ChildItem -Recurse ".\release\bin\" -Filter *.exe | ForEach-Object {
+  "### $($_.Name)"
+  "  - 大小: $([math]::Round($_.Length / 1KB, 2)) KB"
+  "  - 路径: $($_.FullName)"
+  ""
+}) -join "`r`n")
+
+## 系统要求
+- Windows 10 或更高版本
+- Microsoft Visual C++ Redistributable
+
+## 使用说明
+1. 解压下载的ZIP文件
+2. 运行 bin 目录中的可执行文件
+3. 某些程序可能需要额外的DLL文件，请确保所有文件在同一目录
+
+## 源代码
+完整源代码可在仓库中查看: https://github.com/${{ github.repository }}
+"@
+        
+        $readmeContent | Out-File -FilePath ".\release\README.md" -Encoding UTF8
+    
+    - name: Create release archive
+      run: |
+        Compress-Archive -Path .\release\* -DestinationPath "DialogueSystem-${{ steps.version.outputs.version }}.zip" -Force
+    
+    - name: Create Release
+      id: create_release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ steps.version.outputs.version }}
+        release_name: "${{ steps.version.outputs.version }} - ${{ steps.timestamp.outputs.timestamp }}"
+        body_path: ./release/README.md
+        files: DialogueSystem-${{ steps.version.outputs.version }}.zip
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: DialogueSystem-${{ steps.version.outputs.version }}
+        path: |
+          ./release/
+          DialogueSystem-${{ steps.version.outputs.version }}.zip
