@@ -1,0 +1,62 @@
+# 序幕
+# 角色定义
+@character sakura name="木之本樱" color="#FF6B9D"
+@character tomoyo name="大道寺知世" color="#4A90E2"
+
+# 场景开始
+@bg classroom_day
+@show sakura left happy
+@show tomoyo right smile
+
+@bgm bgm01.ogg volume=0.8
+
+# 对话
+sakura happy "早上好，知世！"
+tomoyo smile "早上好，小樱！今天天气真好呢~"
+sakura normal "嗯！对了，昨天的作业你写完了吗？"
+tomoyo thinking "数学题吗？最后一题有点难呢..."
+
+# 选择支
+@choice
+    "帮知世讲解题目" -> help_tomoyo
+    "问知世借作业参考" -> borrow_homework
+    "转移话题" -> change_topic
+
+# 分支1
+@label help_tomoyo
+sakura happy "我来帮你讲吧！这道题其实是这样解的..."
+tomoyo happy "谢谢你，小樱！你真厉害！"
+@affection tomoyo +10
+@goto continue_story
+
+# 分支2
+@label borrow_homework
+sakura shy "那个...知世，作业能借我看看吗？"
+tomoyo smile "当然可以，不过要自己理解哦！"
+@affection tomoyo +5
+@goto continue_story
+
+# 分支3
+@label change_topic
+sakura normal "啊！你看窗外的樱花开了！"
+tomoyo happy "真的呢！好漂亮！"
+@goto continue_story
+
+# 继续故事
+@label continue_story
+@bg school_gate_afternoon
+@hide tomoyo
+@show sakura center normal
+
+sakura normal "今天又是美好的一天呢！"
+@wait 2.0
+
+# 结束
+@bg sakura_house_night
+@show sakura center sleepy
+sakura sleepy "好困...该睡觉了..."
+@bgm stop
+@fadeout 1.0
+
+# 序幕结束
+@end
