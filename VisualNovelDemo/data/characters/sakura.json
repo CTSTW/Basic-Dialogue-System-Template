@@ -1,0 +1,60 @@
+{
+    "id": "sakura",
+    "name": "木之本樱",
+    "description": "活泼开朗的魔法少女",
+    "voice_actor": "丹下樱",
+    "expressions": {
+        "normal": {
+            "texture": "characters/sakura_normal.png",
+            "uv_offset": [0, 0],
+            "uv_size": [1, 1]
+        },
+        "happy": {
+            "texture": "characters/sakura_happy.png",
+            "uv_offset": [0, 0],
+            "uv_size": [1, 1]
+        },
+        "sad": {
+            "texture": "characters/sakura_sad.png",
+            "uv_offset": [0, 0],
+            "uv_size": [1, 1]
+        },
+        "angry": {
+            "texture": "characters/sakura_angry.png",
+            "uv_offset": [0, 0],
+            "uv_size": [1, 1]
+        },
+        "surprised": {
+            "texture": "characters/sakura_surprised.png",
+            "uv_offset": [0, 0],
+            "uv_size": [1, 1]
+        },
+        "shy": {
+            "texture": "characters/sakura_shy.png",
+            "uv_offset": [0, 0],
+            "uv_size": [1, 1]
+        }
+    },
+    "animations": {
+        "enter": {
+            "frames": ["sakura_enter_1.png", "sakura_enter_2.png", "sakura_enter_3.png"],
+            "frame_rate": 12,
+            "loop": false
+        },
+        "idle": {
+            "frames": ["sakura_idle_1.png", "sakura_idle_2.png"],
+            "frame_rate": 2,
+            "loop": true
+        }
+    },
+    "positions": {
+        "left": {"x": 0.2, "y": 0.5, "depth": 0.5, "scale": 1.0},
+        "center": {"x": 0.5, "y": 0.5, "depth": 0.3, "scale": 1.0},
+        "right": {"x": 0.8, "y": 0.5, "depth": 0.5, "scale": 1.0}
+    },
+    "voice_clips": {
+        "greeting": "voice/sakura_greeting.ogg",
+        "happy": "voice/sakura_happy.ogg",
+        "sad": "voice/sakura_sad.ogg"
+    }
+}
