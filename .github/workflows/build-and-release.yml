@@ -158,7 +158,8 @@ $fileList
         tag_name: v${{ steps.version.outputs.version }}
         release_name: "${{ steps.version.outputs.version }} - ${{ steps.timestamp.outputs.timestamp }}"
         body_path: ./release/README.md
-        files: DialogueSystem-${{ steps.version.outputs.version }}.zip
+        files: |
+          ./DialogueSystem-${{ steps.version.outputs.version }}.zip
         draft: false
         prerelease: false
       env:
