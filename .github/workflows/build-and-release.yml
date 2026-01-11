@@ -24,11 +24,15 @@ jobs:
     
     - name: Get current date
       id: date
-      run: echo "date=$(Get-Date -Format 'yyyy.M.d')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+      run: |
+        $date = Get-Date -Format 'yyyy.M.d'
+        echo "date=$date" >> $env:GITHUB_OUTPUT
     
     - name: Get current timestamp
       id: timestamp
-      run: echo "timestamp=$(Get-Date -Format 'yyyy.M.d-HHmm')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+      run: |
+        $timestamp = Get-Date -Format 'yyyy.M.d-HHmm'
+        echo "timestamp=$timestamp" >> $env:GITHUB_OUTPUT
     
     - name: Set version
       id: version
@@ -40,7 +44,7 @@ jobs:
         } else {
           $version = "${{ steps.date.outputs.date }}"
         }
-        echo "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+        echo "version=$version" >> $env:GITHUB_OUTPUT
     
     - name: Setup CMake
       uses: jwlawson/actions-setup-cmake@v1
@@ -71,30 +75,44 @@ jobs:
     - name: Collect executable files
       run: |
         # 复制根目录的cpp编译的可执行文件
+        Copy-Item .\build\bin\Release\*.exe .\release\bin\ -ErrorAction SilentlyContinue
         Copy-Item .\build\Release\*.exe .\release\bin\ -ErrorAction SilentlyContinue
         
         # 复制VisualNovelDemo的可执行文件
+        if (Test-Path ".\build\bin\Release\VisualNovelDemo.exe") {
+          Copy-Item ".\build\bin\Release\VisualNovelDemo.exe" ".\release\bin\"
+        }
+        
         if (Test-Path ".\build\VisualNovelDemo\Release\VisualNovelDemo.exe") {
           Copy-Item ".\build\VisualNovelDemo\Release\VisualNovelDemo.exe" ".\release\bin\"
         }
         
         # 复制其他可能的可执行文件
-        Get-ChildItem -Recurse -Filter *.exe | Where-Object { $_.DirectoryName -like "*Release*" } | ForEach-Object {
+        Get-ChildItem -Recurse -Path .\build -Filter *.exe | Where-Object { $_.DirectoryName -like "*Release*" } | ForEach-Object {
           $dest = Join-Path ".\release\bin\" $_.Name
-          Copy-Item $_.FullName $dest
+          Copy-Item $_.FullName $dest -Force
         }
         
         # 复制DLL文件
+        Copy-Item .\build\bin\Release\*.dll .\release\bin\ -ErrorAction SilentlyContinue
         Copy-Item .\build\Release\*.dll .\release\bin\ -ErrorAction SilentlyContinue
         
         # 列出所有文件
-        Write-Output "=== 编译的文件列表 ==="
+        echo "=== 编译的文件列表 ==="
         Get-ChildItem -Recurse ".\release\bin\" -File | ForEach-Object {
-          Write-Output "$($_.Name) - $($_.Length / 1KB) KB"
+          echo "$($_.Name) - $([math]::Round($_.Length / 1KB, 2)) KB"
         }
     
     - name: Create README for release
       run: |
+        $exeFiles = Get-ChildItem -Recurse ".\release\bin\" -Filter *.exe
+        $fileList = ""
+        foreach ($file in $exeFiles) {
+          $fileList += "### $($file.Name)`r`n"
+          $fileList += "  - 大小: $([math]::Round($file.Length / 1KB, 2)) KB`r`n"
+          $fileList += "  - 路径: $($file.FullName)`r`n`r`n"
+        }
+        
         $readmeContent = @"
 # 编译发布版本
 
@@ -106,12 +124,7 @@ jobs:
 
 ## 包含的可执行文件
 
-$((Get-ChildItem -Recurse ".\release\bin\" -Filter *.exe | ForEach-Object {
-  "### $($_.Name)"
-  "  - 大小: $([math]::Round($_.Length / 1KB, 2)) KB"
-  "  - 路径: $($_.FullName)"
-  ""
-}) -join "`r`n")
+$fileList
 
 ## 系统要求
 - Windows 10 或更高版本
@@ -130,7 +143,10 @@ $((Get-ChildItem -Recurse ".\release\bin\" -Filter *.exe | ForEach-Object {
     
     - name: Create release archive
       run: |
-        Compress-Archive -Path .\release\* -DestinationPath "DialogueSystem-${{ steps.version.outputs.version }}.zip" -Force
+        $zipName = "DialogueSystem-${{ steps.version.outputs.version }}.zip"
+        Compress-Archive -Path .\release\* -DestinationPath $zipName -Force
+        echo "Created archive: $zipName"
+        Get-Item $zipName
     
     - name: Create Release
       id: create_release
